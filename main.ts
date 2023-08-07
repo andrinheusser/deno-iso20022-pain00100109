@@ -4,57 +4,68 @@ import { Pain00100109Schema } from "./src/schemas.ts"
 
 const myPain: z.infer<typeof Pain00100109Schema> = {
     Document: {
-        GrpHdr: {
-            MsgId: "123456789",
-            InitgPty: {
-                Nm: "John Doe",
-            }
-        },
-        PmtInf: [
-            {
-                PmtInfId: "123456789",
-                PmtMtd: "TRF",
-                Dbtr: {
+        "@xmlns": "urn:iso:std:iso:20022:tech:xsd:pain.001.001.09",
+        "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
+        "@xsi:schemaLocation": "urn:iso:std:iso:20022:tech:xsd:pain.001.001.09 spec/pain.001.001.09.xsd",
+        CstmrCdtTrfInitn: {
+            GrpHdr: {
+                MsgId: "123456789",
+                CreDtTm: new Date().toISOString(),
+                NbOfTxs: 1,
+                CtrlSum: 100.2,
+                InitgPty: {
                     Nm: "John Doe",
-                },
-                DbtrAcct: {
-                    Id: {
-                        IBAN: "DE123456789",
+                }
+            },
+            PmtInf: [
+                {
+                    PmtInfId: "123456789",
+                    PmtMtd: "TRF",
+                    ReqdExctnDt: { Dt: new Date().toISOString().split("T")[0] },
+                    Dbtr: {
+                        Nm: "John Doe Dbtr",
                     },
-                },
-                DbtrAgt: {
-                    FinInstnId: {
-                        BICFI: "GENODEF1JEV",
-                    },
-                },
-                CdtTrfTxInf: [{
-                    PmtId: {
-                        EndToEndId: "123456789",
-                    },
-                    Amt: {
-                        InstdAmt: {
-                            amt: 100.2,
-                            "@Ccy": "CHF",
-                        }
-                    },
-                    CdtrAgt: {
-                        FinInstnId: {
-                            BICFI: "GENODEF1JEV",
-                        },
-                    },
-                    CdtrAcct: {
+                    DbtrAcct: {
                         Id: {
-                            IBAN: "DE123456789",
+                            IBAN: "CH0209000000100013997",
                         },
                     },
-                    Cdtr: {
-                        Nm: "John Doe",
+                    DbtrAgt: {
+                        FinInstnId: {
+                            BICFI: "POFICHBE",
+                        },
                     },
-                }]
-            }
-        ]
+                    CdtTrfTxInf: [{
+                        PmtId: {
+                            InstrId: "123456789",
+                            EndToEndId: "123456789",
+                        },
+                        Amt: {
+                            InstdAmt: {
+                                "#text": 100.2,
+                                "@Ccy": "CHF",
+                            }
+                        },
+                        CdtrAgt: {
+                            FinInstnId: {
+                                BICFI: "CRESCHZZ80A",
+                            },
+                        },
+                        Cdtr: {
+                            Nm: "John Doe Cdtr",
+                        },
+                        CdtrAcct: {
+                            Id: {
+                                IBAN: "CH0204835000626882001",
+                            },
+                        },
+                    }]
+                }
+            ]
+        }
     }
 }
 
-const xml = stringify(myPain)
+const xml = `<?xml version="1.0" encoding="UTF-8"?>\n` + stringify(myPain)
+
 console.log(xml)

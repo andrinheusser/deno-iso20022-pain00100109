@@ -12,9 +12,23 @@ function isIBAN(value: string): boolean {
     return /^[A-Z]{2}\d{2}\s?([0-9a-zA-Z]{4}\s?){4}[0-9a-zA-Z]{2}$/.test(value);
 }
 
-const ISODateSchema = z.custom((value: unknown) => typeof value === "string" && isISODate(value) ? undefined : "Invalid ISO date format");
-const ISODatetimeSchema = z.custom((value: unknown) => typeof value === "string" && isISODatetime(value) ? undefined : "Invalid ISO datetime format");
-const IBANSchema = z.custom((value: unknown) => typeof value === "string" && isIBAN(value) ? undefined : "Invalid IBAN format");
+const ISODateSchema = z.string().refine((value) => isISODate(value), "Invalid ISO date format");
+const ISODatetimeSchema = z.string().refine((value) => isISODatetime(value), "Invalid ISO datetime format");
+const IBANSchema = z.string().refine((value) => isIBAN(value), "Invalid IBAN format");
+
+const DateAndDateTime2ChoiceSchema = z.object({
+    Dt: ISODateSchema.describe("Date expressed as a calendar date."),
+    DtTm: ISODatetimeSchema.describe("Date and time together expressed in ISO 8601 format."),
+}).partial().superRefine((val, ctx) => {
+    if (!val.Dt && !val.DtTm) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Either Dt or DtTm must be present",
+            path: [],
+        });
+    }
+}).describe("Choice between a date or a date and time format.");
+
 
 const CurrencySchema = z.string().min(3).max(3)
 
@@ -115,7 +129,7 @@ const BranchAndFinancialInstitutionIdentification6Schema = z.object({
 })
 
 const PaymentIdentification6Schema = z.object({
-    InstrId: z.string().max(35).optional().describe("Unique identification as assigned by an instructing party for an instructed party to unambiguously identify the instruction."),
+    InstrId: z.string().max(35).describe("Unique identification as assigned by an instructing party for an instructed party to unambiguously identify the instruction."),
     EndToEndId: z.string().max(35).describe("Unique identification assigned by the initiating party to unambiguously identify the transaction. This identification is passed on, unchanged, throughout the entire end-to-end chain."),
     UETR: z.string().uuid().optional().describe("Universally unique identifier to provide an end-to-end reference of a payment transaction."),
 })
@@ -130,7 +144,7 @@ const PaymentTypeInformation29Schema = z.object({
 
 const ActiveOrHistoricCurrencyAndAmountSchema = z.object({
     "@Ccy": z.string().min(3).max(3).describe("Currency in which the amount is expressed. XML Attribute"),
-    amt: z.number().min(0).max(999999999999.99).describe("Amount of money")
+    "#text": z.number().min(0).max(999999999999.99).describe("Amount of money")
 })
 
 const AmountType4ChoiceSchema = z.union([
@@ -258,7 +272,7 @@ const PaymentInstruction30Schema = z.object({
     CtrlSum: z.number().optional().describe("Total of all individual amounts included in the group, irrespective of currencies"),
     // TODO: PmtTpInf
     //PmtTpInf: z.object().optional(),
-    ReqdExctnDt: ISODateSchema.or(ISODatetimeSchema).describe("Date at which the initiating party requests the clearing agent to process the payment"),
+    ReqdExctnDt: DateAndDateTime2ChoiceSchema.describe("Date at which the initiating party requests the clearing agent to process the payment"),
     PoolgAdjstmntDt: ISODateSchema.optional().describe("Date used for the correction of the value date of a cash pool movement that has been posted with a different value date"),
     Dbtr: PartyIdentification135Schema.describe("Party that owes an amount of money to the (ultimate) creditor"),
     DbtrAcct: CashAccount38Schema.describe("Unambiguous identification of the account of the debtor to which a debit entry will be made as a result of the transaction."),
@@ -292,15 +306,20 @@ const GroupHeader85Schema = z.object({
     CreDtTm: ISODatetimeSchema.describe("Date and time at which the message was created."),
     // TODO: Authstn
     // Authstn: ,
-    NbOfTxs: z.number().min(1).max(99999999999999).optional().describe("Number of individual transactions contained in the message."),
-    CtrlSum: z.number().optional().describe("Total of all individual amounts included in the message, irrespective of currencies."),
+    NbOfTxs: z.number().min(1).max(99999999999999).describe("Number of individual transactions contained in the message."),
+    CtrlSum: z.number().describe("Total of all individual amounts included in the message, irrespective of currencies."),
     InitgPty: PartyIdentification135Schema.describe("Party that initiates the payment"),
     FwdgAgt: BranchAndFinancialInstitutionIdentification6Schema.optional().describe("Financial institution that receives the instruction from the initiating party and forwards it to the next agent in the payment chain for execution."),
 })
 
 export const Pain00100109Schema = z.object({
     Document: z.object({
-        GrpHdr: GroupHeader85Schema,
-        PmtInf: z.array(PaymentInstruction30Schema).min(1)
+        CstmrCdtTrfInitn: z.object({
+            GrpHdr: GroupHeader85Schema,
+            PmtInf: z.array(PaymentInstruction30Schema).min(1),
+        }),
+        "@xmlns": z.literal("urn:iso:std:iso:20022:tech:xsd:pain.001.001.09"),
+        "@xmlns:xsi": z.literal("http://www.w3.org/2001/XMLSchema-instance"),
+        "@xsi:schemaLocation": z.literal("urn:iso:std:iso:20022:tech:xsd:pain.001.001.09 spec/pain.001.001.09.xsd"),
     })
 })
